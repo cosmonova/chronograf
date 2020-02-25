@@ -90,31 +90,20 @@ func (g *Generic) PrincipalID(provider *http.Client) (string, error) {
 	}
 
 	defer r.Body.Close()
-	//if err = json.NewDecoder(r.Body).Decode(&res); err != nil {
-	//	return "", err
-	//}
-	//
-	//g.Logger.Info( r.Body.String() )
-
-	//b, err := ioutil.ReadAll(r.Body)
-
-	//fmt.Println(string(b))
-
-	email := ""
 
 	result := gojsonq.New().Reader(r.Body).Find(g.APIKey)
-	email = github.Stringify(result)
+	email := github.Stringify(result)
 
 	g.Logger.Info(email)
 
 	// If we did not receive an email address, try to lookup the email
 	// in a similar way as github
-	//if email == "" {
-	//	email, err = g.getPrimaryEmail(provider)
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//}
+	if email == "" {
+		email, err = g.getPrimaryEmail(provider)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	// If we need to restrict to a set of domains, we first get the org
 	// and filter.
@@ -141,12 +130,8 @@ func (g *Generic) Group(provider *http.Client) (string, error) {
 
 	defer r.Body.Close()
 
-	email := ""
-
 	result := gojsonq.New().Reader(r.Body).Find(g.APIKey)
-	email = github.Stringify(result)
-
-	g.Logger.Info(email)
+	email := github.Stringify(result)
 
 	domain := strings.Split(email, "@")
 	if len(domain) != 2 {
