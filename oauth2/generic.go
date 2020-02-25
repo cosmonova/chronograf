@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/go-github/github"
+	"github.com/thedevsaddam/gojsonq"
 	"net/http"
 	"strings"
 
@@ -79,32 +81,40 @@ func (g *Generic) Config() *oauth2.Config {
 
 // PrincipalID returns the email address of the user.
 func (g *Generic) PrincipalID(provider *http.Client) (string, error) {
-	res := map[string]interface{}{}
+	//res := map[string]interface{}{}
 
 	r, err := provider.Get(g.APIURL)
 	if err != nil {
+		g.Logger.Error(err)
 		return "", err
 	}
 
 	defer r.Body.Close()
-	if err = json.NewDecoder(r.Body).Decode(&res); err != nil {
-		return "", err
-	}
+	//if err = json.NewDecoder(r.Body).Decode(&res); err != nil {
+	//	return "", err
+	//}
+	//
+	//g.Logger.Info( r.Body.String() )
+
+	//b, err := ioutil.ReadAll(r.Body)
+
+	//fmt.Println(string(b))
 
 	email := ""
-	value := res[g.APIKey]
-	if e, ok := value.(string); ok {
-		email = e
-	}
+
+	result := gojsonq.New().Reader(r.Body).Find(g.APIKey)
+	email = github.Stringify(result)
+
+	g.Logger.Info(email)
 
 	// If we did not receive an email address, try to lookup the email
 	// in a similar way as github
-	if email == "" {
-		email, err = g.getPrimaryEmail(provider)
-		if err != nil {
-			return "", err
-		}
-	}
+	//if email == "" {
+	//	email, err = g.getPrimaryEmail(provider)
+	//	if err != nil {
+	//		return "", err
+	//	}
+	//}
 
 	// If we need to restrict to a set of domains, we first get the org
 	// and filter.
@@ -123,7 +133,6 @@ func (g *Generic) PrincipalID(provider *http.Client) (string, error) {
 // Group returns the domain that a user belongs to in the
 // the generic OAuth.
 func (g *Generic) Group(provider *http.Client) (string, error) {
-	res := map[string]interface{}{}
 
 	r, err := provider.Get(g.APIURL)
 	if err != nil {
@@ -131,24 +140,13 @@ func (g *Generic) Group(provider *http.Client) (string, error) {
 	}
 
 	defer r.Body.Close()
-	if err = json.NewDecoder(r.Body).Decode(&res); err != nil {
-		return "", err
-	}
 
 	email := ""
-	value := res[g.APIKey]
-	if e, ok := value.(string); ok {
-		email = e
-	}
 
-	// If we did not receive an email address, try to lookup the email
-	// in a similar way as github
-	if email == "" {
-		email, err = g.getPrimaryEmail(provider)
-		if err != nil {
-			return "", err
-		}
-	}
+	result := gojsonq.New().Reader(r.Body).Find(g.APIKey)
+	email = github.Stringify(result)
+
+	g.Logger.Info(email)
 
 	domain := strings.Split(email, "@")
 	if len(domain) != 2 {
@@ -175,6 +173,7 @@ func (g *Generic) getPrimaryEmail(client *http.Client) (string, error) {
 	defer r.Body.Close()
 
 	emails := []*UserEmail{}
+
 	if err = json.NewDecoder(r.Body).Decode(&emails); err != nil {
 		return "", err
 	}
